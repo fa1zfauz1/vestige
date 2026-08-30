@@ -1,0 +1,7 @@
+# Phase 3 - Face Detection & Recognition
+fastapi>=0.110.0
+uvicorn>=0.29.0
+python-multipart>=0.0.9
+# insightface>=0.7.3
+# opencv-python>=4.9.0
+# numpy>=1.26.0

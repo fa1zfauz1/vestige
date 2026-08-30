@@ -1,0 +1,56 @@
+# Environment
+.env
+
+# Node
+node_modules/
+.npm/
+.yarn/
+
+# PHP
+/vendor/
+
+# Laravel
+apps/backend/.env
+apps/backend/storage/framework/cache/data/
+apps/backend/storage/framework/sessions/
+apps/backend/storage/framework/testing/
+apps/backend/storage/framework/views/
+apps/backend/storage/logs/
+apps/backend/bootstrap/cache/
+
+# Nuxt
+apps/frontend/.nuxt/
+apps/frontend/.output/
+apps/frontend/dist/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+volumes/
+
+# Design inspiration screenshots
+inspo/
+
+# shadcn MCP auto-generated (not part of the project)
+/package.json
+/package-lock.json
+
+# opencode session transcripts
+/session-*.md
