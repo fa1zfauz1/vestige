@@ -28,6 +28,7 @@ import { Badge } from '@/components/ui/badge'
 
 const authStore = useAuthStore()
 const route = useRoute()
+const apiBase = useRuntimeConfig().public.apiBase
 const mobileOpen = ref(false)
 
 const navItems = computed(() => {
@@ -64,6 +65,7 @@ watch(() => route.fullPath, () => {
   <div class="min-h-dvh bg-background text-foreground">
     <!-- Desktop sidebar -->
     <aside
+      v-if="authStore.user"
       class="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-border bg-sidebar lg:flex"
     >
       <div class="flex h-16 items-center gap-2 px-4">
@@ -73,7 +75,7 @@ watch(() => route.fullPath, () => {
         <span class="text-base font-semibold tracking-tight">VESTIGE</span>
       </div>
 
-      <div class="px-3">
+      <div v-if="authStore.user" class="px-3">
         <div class="flex items-center gap-2 rounded-xl p-2 hover:bg-muted/60">
           <Avatar size="lg">
             <AvatarFallback>{{ initials }}</AvatarFallback>
@@ -95,23 +97,25 @@ watch(() => route.fullPath, () => {
         </Button>
       </div>
 
-      <Separator class="my-4" />
+      <template v-if="authStore.user">
+        <Separator class="my-4" />
 
-      <nav class="flex-1 space-y-1 overflow-y-auto px-3">
-        <template v-for="(item, i) in navItems" :key="item.to">
-          <NuxtLink
-            :to="item.to"
-            class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
-            :class="initialsActive(item.to) ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
-          >
-            <component :is="item.icon" class="size-4" />
-            {{ item.label }}
-          </NuxtLink>
-          <Separator v-if="i === 2 && authStore.isAdmin" class="my-2" />
-        </template>
-      </nav>
+        <nav class="flex-1 space-y-1 overflow-y-auto px-3">
+          <template v-for="(item, i) in navItems" :key="item.to">
+            <NuxtLink
+              :to="item.to"
+              class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+              :class="initialsActive(item.to) ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+            >
+              <component :is="item.icon" class="size-4" />
+              {{ item.label }}
+            </NuxtLink>
+            <Separator v-if="i === 2 && authStore.isAdmin" class="my-2" />
+          </template>
+        </nav>
+      </template>
 
-      <div class="px-3 pb-4">
+      <div class="mt-auto px-3 pb-4">
         <div class="flex flex-col gap-2 rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
           <p class="font-medium text-foreground">For the stories that outlive us.</p>
           <p>Private, family-only access. Uploads are kept on your own infrastructure.</p>
@@ -121,7 +125,7 @@ watch(() => route.fullPath, () => {
 
     <!-- Mobile sidebar (off-canvas) -->
     <Transition enter-active-class="transition-opacity ease-out duration-200" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition-opacity ease-in duration-200" leave-from-class="opacity-100" leave-to-class="opacity-0">
-      <div v-if="mobileOpen" class="fixed inset-0 z-50 bg-black/50 lg:hidden" @click="mobileOpen = false" />
+      <div v-if="authStore.user && mobileOpen" class="fixed inset-0 z-50 bg-black/50 lg:hidden" @click="mobileOpen = false" />
     </Transition>
 
     <Transition
@@ -130,7 +134,7 @@ watch(() => route.fullPath, () => {
       leave-active-class="transition ease-in-out duration-200"
       leave-to-class="-translate-x-full"
     >
-      <aside v-if="mobileOpen" class="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-border bg-background lg:hidden">
+      <aside v-if="authStore.user && mobileOpen" class="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-border bg-background lg:hidden">
         <div class="flex h-16 items-center justify-between px-4">
           <div class="flex items-center gap-2">
             <div class="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -143,7 +147,7 @@ watch(() => route.fullPath, () => {
           </Button>
         </div>
 
-        <div class="px-3">
+        <div v-if="authStore.user" class="px-3">
           <div class="flex items-center gap-2 rounded-xl p-2">
             <Avatar size="lg">
               <AvatarFallback>{{ initials }}</AvatarFallback>
@@ -161,22 +165,24 @@ watch(() => route.fullPath, () => {
           </Button>
         </div>
 
-        <Separator class="my-4" />
+        <template v-if="authStore.user">
+          <Separator class="my-4" />
 
-        <nav class="flex-1 space-y-1 overflow-y-auto px-3">
-          <NuxtLink
-            v-for="item in navItems"
-            :key="item.to"
-            :to="item.to"
-            class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
-            :class="initialsActive(item.to) ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
-          >
-            <component :is="item.icon" class="size-4" />
-            {{ item.label }}
-          </NuxtLink>
-        </nav>
+          <nav class="flex-1 space-y-1 overflow-y-auto px-3">
+            <NuxtLink
+              v-for="item in navItems"
+              :key="item.to"
+              :to="item.to"
+              class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+              :class="initialsActive(item.to) ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+            >
+              <component :is="item.icon" class="size-4" />
+              {{ item.label }}
+            </NuxtLink>
+          </nav>
+        </template>
 
-        <div class="border-t border-border p-3">
+        <div v-if="authStore.user" class="border-t border-border p-3">
           <Button variant="ghost" class="w-full justify-start gap-2 text-red-600 dark:text-red-400" @click="authStore.logout">
             <LogOutIcon class="size-4" />
             Log out
@@ -186,10 +192,10 @@ watch(() => route.fullPath, () => {
     </Transition>
 
     <!-- Main column -->
-    <div class="flex min-h-dvh flex-col lg:pl-64">
+    <div class="flex min-h-dvh flex-col" :class="authStore.user ? 'lg:pl-64' : ''">
       <!-- Topbar -->
       <header class="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-md lg:px-6">
-        <Button variant="ghost" size="icon" class="lg:hidden" aria-label="Open menu" @click="mobileOpen = true">
+        <Button v-if="authStore.user" variant="ghost" size="icon" class="lg:hidden" aria-label="Open menu" @click="mobileOpen = true">
           <MenuIcon class="size-5" />
         </Button>
 
@@ -200,7 +206,7 @@ watch(() => route.fullPath, () => {
         </div>
 
         <!-- Search -->
-        <div class="relative hidden max-w-md flex-1 sm:block">
+        <div v-if="authStore.user" class="relative hidden max-w-md flex-1 sm:block">
           <SearchIcon class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="search"
@@ -214,15 +220,16 @@ watch(() => route.fullPath, () => {
         <div class="ml-auto flex items-center gap-2">
           <ThemeToggle />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger as-child>
-              <button class="flex size-8 items-center justify-center rounded-full" aria-label="Open account menu">
-                <Avatar size="default">
-                  <AvatarFallback class="bg-primary text-primary-foreground">{{ initials }}</AvatarFallback>
-                </Avatar>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" class="w-56">
+          <template v-if="authStore.user">
+            <DropdownMenu>
+              <DropdownMenuTrigger as-child>
+                <button class="flex size-8 items-center justify-center rounded-full" aria-label="Open account menu">
+                  <Avatar size="default">
+                    <AvatarFallback class="bg-primary text-primary-foreground">{{ initials }}</AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" class="w-56">
               <DropdownMenuLabel class="font-normal">
                 <div class="flex items-center gap-2">
                   <Avatar size="sm">
@@ -253,7 +260,14 @@ watch(() => route.fullPath, () => {
                 Log out
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+            </DropdownMenu>
+          </template>
+
+          <a v-else :href="`${apiBase}/auth/google/redirect`">
+            <Button size="sm">
+              Sign in
+            </Button>
+          </a>
         </div>
       </header>
 
