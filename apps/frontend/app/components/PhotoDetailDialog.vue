@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { CalendarIcon, MapPinIcon, UserIcon, FileTextIcon } from '@lucide/vue'
+import {
+  CalendarIcon,
+  MapPinIcon,
+  UserIcon,
+  FileTextIcon,
+  Trash2Icon,
+} from '@lucide/vue'
+import { useAuthStore } from '~/stores/auth'
+import { toast } from 'vue-sonner'
 import {
   Dialog,
   DialogContent,
@@ -9,6 +17,18 @@ import {
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Button } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import PhotoFlipCard from './PhotoFlipCard.vue'
 
 type Photo = {
@@ -30,10 +50,56 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
+  (e: 'rotated', photo: Photo): void
+  (e: 'deleted', id: number): void
 }>()
+
+const authStore = useAuthStore()
+const apiBase = useRuntimeConfig().public.apiBase
+const busy = ref(false)
 
 function onOpenChange(value: boolean) {
   emit('update:open', value)
+}
+
+async function rotate(direction: 'left' | 'right', side: 'front' | 'back' = 'front') {
+  if (!props.photo) return
+  if (side === 'back' && !props.photo.back_image_url) return
+  busy.value = true
+  try {
+    const res = await fetch(`${apiBase}/photos/${props.photo.id}/rotate`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${authStore.token}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({ direction, target: side }),
+    })
+    if (!res.ok) throw new Error('Rotation failed')
+    const updated = (await res.json()) as Photo
+    emit('rotated', updated)
+    toast.success(direction === 'left' ? 'Rotated left' : 'Rotated right')
+  } catch {
+    toast.error('Could not rotate the photo')
+  } finally {
+    busy.value = false
+  }
+}
+
+async function remove() {
+  if (!props.photo) return
+  try {
+    const res = await fetch(`${apiBase}/photos/${props.photo.id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${authStore.token}` },
+    })
+    if (!res.ok) throw new Error('Delete failed')
+    emit('deleted', props.photo.id)
+    emit('update:open', false)
+    toast.success('Photo deleted')
+  } catch {
+    toast.error('Could not delete the photo')
+  }
 }
 
 function formatDate(value?: string | null) {
@@ -63,7 +129,35 @@ function formatDate(value?: string | null) {
         <PhotoFlipCard
           :front-url="photo.front_image_url"
           :back-url="photo.back_image_url"
+          :busy="busy"
+          @rotate="rotate"
         />
+
+        <div class="flex items-center justify-end">
+          <AlertDialog>
+            <AlertDialogTrigger as-child>
+              <Button variant="destructive" size="sm">
+                <Trash2Icon class="size-3.5" />
+                Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this photo?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This permanently removes the photo and its back image from the archive.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction variant="destructive" @click="remove">
+                  <Trash2Icon class="size-3.5" />
+                  Delete photo
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
 
         <div class="flex flex-wrap gap-2">
           <Badge v-if="photo.taken_year" variant="outline">
