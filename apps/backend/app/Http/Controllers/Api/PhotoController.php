@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Photo;
+use Aws\S3\S3Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -15,10 +16,10 @@ class PhotoController extends Controller
             ->latest()
             ->paginate(20)
             ->through(function (Photo $photo) {
-                $photo->front_image_url = $this->browserUrl(Storage::disk('minio')->temporaryUrl($photo->front_image_path, now()->addMinutes(5)));
+                $photo->front_image_url = $this->signedObjectUrl($photo->front_image_path);
 
                 if ($photo->back_image_path) {
-                    $photo->back_image_url = $this->browserUrl(Storage::disk('minio')->temporaryUrl($photo->back_image_path, now()->addMinutes(5)));
+                    $photo->back_image_url = $this->signedObjectUrl($photo->back_image_path);
                 }
 
                 return $photo;
@@ -62,10 +63,10 @@ class PhotoController extends Controller
     {
         $photo->load('uploader');
 
-        $photo->front_image_url = $this->browserUrl(Storage::disk('minio')->temporaryUrl($photo->front_image_path, now()->addMinutes(5)));
+        $photo->front_image_url = $this->signedObjectUrl($photo->front_image_path);
 
         if ($photo->back_image_path) {
-            $photo->back_image_url = $this->browserUrl(Storage::disk('minio')->temporaryUrl($photo->back_image_path, now()->addMinutes(5)));
+            $photo->back_image_url = $this->signedObjectUrl($photo->back_image_path);
         }
 
         return response()->json($photo);
@@ -99,12 +100,26 @@ class PhotoController extends Controller
         return response()->json(null, 204);
     }
 
-    private function browserUrl(string $url): string
+    private function signedObjectUrl(string $path, int $minutes = 5): string
     {
-        return str_replace(
-            env('MINIO_ENDPOINT', 'http://minio:9000'),
-            env('MINIO_PUBLIC_URL', 'http://localhost:9000'),
-            $url
-        );
+        $disk = config('filesystems.disks.minio');
+
+        $client = new S3Client([
+            'version' => 'latest',
+            'region' => $disk['region'],
+            'endpoint' => env('MINIO_PUBLIC_URL', 'http://localhost:9000'),
+            'use_path_style_endpoint' => true,
+            'credentials' => [
+                'key' => $disk['key'],
+                'secret' => $disk['secret'],
+            ],
+        ]);
+
+        $command = $client->getCommand('GetObject', [
+            'Bucket' => $disk['bucket'],
+            'Key' => $path,
+        ]);
+
+        return (string) $client->createPresignedRequest($command, now()->addMinutes($minutes))->getUri();
     }
 }
