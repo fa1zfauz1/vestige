@@ -52,6 +52,17 @@ function openPhoto(photo: Photo) {
   dialogOpen.value = true
 }
 
+function onRotated(updated: Photo) {
+  const index = photos.value.findIndex((p) => p.id === updated.id)
+  if (index !== -1) photos.value.splice(index, 1, updated)
+  selected.value = updated
+}
+
+function onDeleted(id: number) {
+  photos.value = photos.value.filter((p) => p.id !== id)
+  selected.value = null
+}
+
 onMounted(load)
 </script>
 
@@ -111,6 +122,6 @@ onMounted(load)
       />
     </div>
 
-    <PhotoDetailDialog v-model:open="dialogOpen" :photo="selected" />
+    <PhotoDetailDialog v-model:open="dialogOpen" :photo="selected" @rotated="onRotated" @deleted="onDeleted" />
   </div>
 </template>

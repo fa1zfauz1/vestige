@@ -15,6 +15,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
 
     Route::apiResource('photos', PhotoController::class);
+    Route::post('photos/{photo}/rotate', [PhotoController::class, 'rotate']);
 
     Route::prefix('admin')->middleware('can:admin')->group(function () {
         Route::get('pending-users', [AdminController::class, 'pendingUsers']);
