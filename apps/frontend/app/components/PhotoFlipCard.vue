@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { ArrowLeftRightIcon, RotateCwIcon, RotateCcwIcon } from '@lucide/vue'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { computed, ref, watch } from 'vue'
+import {
+  ArrowLeftRightIcon,
+  RotateCwIcon,
+  RotateCcwIcon,
+  PlusIcon,
+  MinusIcon,
+  MaximizeIcon,
+} from '@lucide/vue'
 
 const props = defineProps<{
   frontUrl: string
@@ -14,73 +19,202 @@ const emit = defineEmits<{
   (e: 'rotate', direction: 'left' | 'right', side: 'front' | 'back'): void
 }>()
 
-const flipped = ref(false)
+const stageEl = ref<HTMLElement | null>(null)
 
-const activeSide = computed<'front' | 'back'>(() => (flipped.value ? 'back' : 'front'))
+const facing = ref<'front' | 'back'>('front')
+const scale = ref(1)
+const tx = ref(0)
+const ty = ref(0)
+const dragging = ref(false)
 
-watch(() => props.frontUrl, () => { flipped.value = false })
+const activeSide = computed<'front' | 'back'>(() => facing.value)
+const imageUrl = computed(() =>
+  facing.value === 'front' ? props.frontUrl : (props.backUrl ?? props.frontUrl),
+)
+
+let dragState = { active: false, startX: 0, startY: 0, startTx: 0, startTy: 0 }
+
+function clamp(v: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, v))
+}
+
+function resetView() {
+  scale.value = 1
+  tx.value = 0
+  ty.value = 0
+}
+
+function zoomBy(factor: number, clientX?: number, clientY?: number) {
+  const next = clamp(scale.value * factor, 1, 6)
+  if (next === scale.value) return
+
+  const stage = stageEl.value
+  const rect = stage?.getBoundingClientRect()
+
+  if (clientX !== undefined && clientY !== undefined && rect) {
+    const px = clientX - rect.left - rect.width / 2
+    const py = clientY - rect.top - rect.height / 2
+    const k = next / scale.value
+    tx.value = px - (px - tx.value) * k
+    ty.value = py - (py - ty.value) * k
+  }
+
+  scale.value = next
+  if (next === 1) {
+    tx.value = 0
+    ty.value = 0
+  }
+}
+
+function zoomCenter(factor: number) {
+  const rect = stageEl.value?.getBoundingClientRect()
+  if (!rect) return
+  zoomBy(factor, rect.left + rect.width / 2, rect.top + rect.height / 2)
+}
+
+function onWheel(e: WheelEvent) {
+  const factor = e.deltaY < 0 ? 1.2 : 1 / 1.2
+  zoomBy(factor, e.clientX, e.clientY)
+}
+
+function onPointerDown(e: PointerEvent) {
+  if (e.button !== 0 || scale.value <= 1) return
+  dragging.value = true
+  dragState = { active: true, startX: e.clientX, startY: e.clientY, startTx: tx.value, startTy: ty.value }
+  ;(e.currentTarget as HTMLElement | null)?.setPointerCapture?.(e.pointerId)
+}
+
+function onPointerMove(e: PointerEvent) {
+  if (!dragState.active) return
+  tx.value = dragState.startTx + (e.clientX - dragState.startX)
+  ty.value = dragState.startTy + (e.clientY - dragState.startY)
+}
+
+function onPointerUp(e: PointerEvent) {
+  dragState.active = false
+  dragging.value = false
+  ;(e.currentTarget as HTMLElement | null)?.releasePointerCapture?.(e.pointerId)
+}
+
+function onDoubleClick(e: MouseEvent) {
+  if (scale.value > 1.5) {
+    resetView()
+    return
+  }
+  zoomBy(2 / scale.value, e.clientX, e.clientY)
+}
+
+function toggleFlip() {
+  facing.value = facing.value === 'front' ? 'back' : 'front'
+  resetView()
+}
+
+watch(() => props.frontUrl, () => resetView())
+watch(() => props.backUrl, () => resetView())
 </script>
 
 <template>
   <div class="flex flex-col items-center gap-3">
     <div
-      class="group relative aspect-[4/3] w-full max-w-full overflow-hidden rounded-xl bg-muted [perspective:1600px]"
-      @mouseleave="flipped = false"
+      ref="stageEl"
+      class="group touch-none relative w-full overflow-hidden rounded-xl bg-muted/60 ring-1 ring-border select-none"
+      :class="scale > 1 || dragging ? 'cursor-grabbing' : 'cursor-grab'"
+      style="height: clamp(280px, 55vh, 72vh)"
+      @wheel.prevent="onWheel"
+      @pointerdown="onPointerDown"
+      @pointermove="onPointerMove"
+      @pointerup="onPointerUp"
+      @pointercancel="onPointerUp"
+      @dblclick="onDoubleClick"
     >
-      <div
-        class="relative h-full w-full transition-transform duration-500 [transform-style:preserve-3d]"
-        :class="flipped ? '[transform:rotateY(180deg)]' : ''"
-      >
-        <!-- Front -->
-        <div class="absolute inset-0 [backface-visibility:hidden]">
-          <img :src="frontUrl" :alt="'Photo front'" class="h-full w-full object-contain" draggable="false">
-        </div>
-
-        <!-- Back (optional) -->
-        <div v-if="backUrl" class="absolute inset-0 [transform:rotateY(180deg)] [backface-visibility:hidden]">
-          <img :src="backUrl" :alt="'Photo back'" class="h-full w-full object-contain" draggable="false">
-        </div>
-        <div v-else class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted p-6 text-center [transform:rotateY(180deg)] [backface-visibility:hidden]">
-          <p class="text-sm font-medium text-muted-foreground">No back image captured</p>
-          <p class="text-xs text-muted-foreground">This photo has no handwritten back saved yet.</p>
-        </div>
+      <!-- Image -->
+      <div class="absolute inset-0 flex items-center justify-center">
+        <img
+          :src="imageUrl"
+          :alt="facing === 'front' ? 'Photo front' : 'Photo back'"
+          class="max-h-full max-w-full object-contain will-change-transform"
+          :class="!dragging ? 'transition-transform duration-100' : ''"
+          :style="{ transform: `translate(${tx}px, ${ty}px) scale(${scale})` }"
+          draggable="false"
+        >
       </div>
 
-      <!-- Rotate controls (dark fade from bottom, shown on hover) -->
+      <!-- Flip toggle -->
+      <div class="absolute left-2 top-2 flex items-center gap-1.5">
+        <button
+          v-if="backUrl"
+          type="button"
+          class="flex items-center gap-1.5 rounded-full bg-black/40 px-2.5 py-1 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-black/60"
+          @pointerdown.stop
+          @click="toggleFlip"
+        >
+          <ArrowLeftRightIcon class="size-3.5" />
+          {{ facing === 'front' ? 'Front' : 'Back' }}
+        </button>
+      </div>
+
+      <!-- Zoom controls -->
+      <div class="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/40 p-1 backdrop-blur-sm">
+        <button
+          type="button"
+          class="flex size-7 items-center justify-center rounded-full text-white transition-colors hover:bg-white/20"
+          title="Zoom out"
+          aria-label="Zoom out"
+          @pointerdown.stop
+          @click="zoomCenter(1 / 1.25)"
+        >
+          <MinusIcon class="size-3.5" />
+        </button>
+        <button
+          type="button"
+          class="flex size-7 items-center justify-center rounded-full text-white transition-colors hover:bg-white/20"
+          title="Zoom in"
+          aria-label="Zoom in"
+          @pointerdown.stop
+          @click="zoomCenter(1.25)"
+        >
+          <PlusIcon class="size-3.5" />
+        </button>
+        <button
+          v-if="scale > 1 || tx !== 0 || ty !== 0"
+          type="button"
+          class="flex size-7 items-center justify-center rounded-full text-white transition-colors hover:bg-white/20"
+          title="Reset view"
+          aria-label="Reset view"
+          @pointerdown.stop
+          @click="resetView"
+        >
+          <MaximizeIcon class="size-3.5" />
+        </button>
+      </div>
+
+      <!-- Rotate controls (dark fade from bottom, on hover) -->
       <div
         class="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 pb-2.5 pt-8 opacity-100 transition-opacity duration-200 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
-        aria-hidden="false"
       >
         <button
           type="button"
-          class="pointer-events-auto flex size-9 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition-colors hover:bg-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:pointer-events-none disabled:opacity-50"
+          class="pointer-events-auto flex size-9 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition-colors hover:bg-white/30 focus-visible:ring-2 focus-visible:ring-white/60 disabled:pointer-events-none disabled:opacity-50"
           :disabled="busy"
           title="Rotate left"
           aria-label="Rotate current side left"
+          @pointerdown.stop
           @click.stop="emit('rotate', 'left', activeSide)"
         >
           <RotateCcwIcon class="size-4" />
         </button>
         <button
           type="button"
-          class="pointer-events-auto flex size-9 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition-colors hover:bg-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:pointer-events-none disabled:opacity-50"
+          class="pointer-events-auto flex size-9 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition-colors hover:bg-white/30 focus-visible:ring-2 focus-visible:ring-white/60 disabled:pointer-events-none disabled:opacity-50"
           :disabled="busy"
           title="Rotate right"
           aria-label="Rotate current side right"
+          @pointerdown.stop
           @click.stop="emit('rotate', 'right', activeSide)"
         >
           <RotateCwIcon class="size-4" />
         </button>
       </div>
-    </div>
-
-    <div v-if="backUrl" class="flex items-center gap-2">
-      <Badge v-if="!flipped" variant="secondary">Front</Badge>
-      <Badge v-else variant="secondary">Back</Badge>
-      <Button variant="outline" size="sm" @click="flipped = !flipped">
-        <ArrowLeftRightIcon class="size-3.5" />
-        {{ flipped ? 'Show front' : 'Flip to back' }}
-      </Button>
     </div>
   </div>
 </template>

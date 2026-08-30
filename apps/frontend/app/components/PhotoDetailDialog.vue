@@ -117,7 +117,7 @@ function formatDate(value?: string | null) {
     :open="open"
     @update:open="onOpenChange"
   >
-    <DialogContent class="sm:max-w-2xl">
+    <DialogContent class="sm:max-w-5xl max-h-[94svh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>{{ photo?.title }}</DialogTitle>
         <DialogDescription>
