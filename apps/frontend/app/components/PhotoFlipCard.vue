@@ -20,12 +20,14 @@ const emit = defineEmits<{
 }>()
 
 const stageEl = ref<HTMLElement | null>(null)
+const imgEl = ref<HTMLImageElement | null>(null)
 
 const facing = ref<'front' | 'back'>('front')
 const scale = ref(1)
 const tx = ref(0)
 const ty = ref(0)
 const dragging = ref(false)
+const settling = ref(false)
 
 const activeSide = computed<'front' | 'back'>(() => facing.value)
 const imageUrl = computed(() =>
@@ -39,9 +41,42 @@ function clamp(v: number, min: number, max: number) {
 }
 
 function resetView() {
+  settling.value = false
   scale.value = 1
   tx.value = 0
   ty.value = 0
+}
+
+function getContentBox() {
+  const stage = stageEl.value
+  const img = imgEl.value
+  if (!stage || !img || !img.offsetWidth) return null
+  return {
+    stageW: stage.clientWidth,
+    stageH: stage.clientHeight,
+    w: img.offsetWidth * scale.value,
+    h: img.offsetHeight * scale.value,
+  }
+}
+
+function panBounds() {
+  const box = getContentBox()
+  if (!box) return { minX: 0, maxX: 0, minY: 0, maxY: 0 }
+  const ex = Math.max(0, (box.w - box.stageW) / 2)
+  const ey = Math.max(0, (box.h - box.stageH) / 2)
+  return { minX: -ex, maxX: ex, minY: -ey, maxY: ey }
+}
+
+function elasticValue(value: number, min: number, max: number, strength = 0.4) {
+  if (value < min) return min - (min - value) * strength
+  if (value > max) return max + (value - max) * strength
+  return value
+}
+
+function settleView() {
+  const b = panBounds()
+  tx.value = clamp(tx.value, b.minX, b.maxX)
+  ty.value = clamp(ty.value, b.minY, b.maxY)
 }
 
 function zoomBy(factor: number, clientX?: number, clientY?: number) {
@@ -63,6 +98,10 @@ function zoomBy(factor: number, clientX?: number, clientY?: number) {
   if (next === 1) {
     tx.value = 0
     ty.value = 0
+  } else {
+    const b = panBounds()
+    tx.value = clamp(tx.value, b.minX, b.maxX)
+    ty.value = clamp(ty.value, b.minY, b.maxY)
   }
 }
 
@@ -78,7 +117,8 @@ function onWheel(e: WheelEvent) {
 }
 
 function onPointerDown(e: PointerEvent) {
-  if (e.button !== 0 || scale.value <= 1) return
+  if (e.button !== 0) return
+  settling.value = false
   dragging.value = true
   dragState = { active: true, startX: e.clientX, startY: e.clientY, startTx: tx.value, startTy: ty.value }
   ;(e.currentTarget as HTMLElement | null)?.setPointerCapture?.(e.pointerId)
@@ -86,13 +126,17 @@ function onPointerDown(e: PointerEvent) {
 
 function onPointerMove(e: PointerEvent) {
   if (!dragState.active) return
-  tx.value = dragState.startTx + (e.clientX - dragState.startX)
-  ty.value = dragState.startTy + (e.clientY - dragState.startY)
+  const b = panBounds()
+  tx.value = elasticValue(dragState.startTx + (e.clientX - dragState.startX), b.minX, b.maxX)
+  ty.value = elasticValue(dragState.startTy + (e.clientY - dragState.startY), b.minY, b.maxY)
 }
 
 function onPointerUp(e: PointerEvent) {
   dragState.active = false
   dragging.value = false
+  settling.value = true
+  requestAnimationFrame(() => settleView())
+  window.setTimeout(() => { settling.value = false }, 420)
   ;(e.currentTarget as HTMLElement | null)?.releasePointerCapture?.(e.pointerId)
 }
 
@@ -130,10 +174,11 @@ watch(() => props.backUrl, () => resetView())
       <!-- Image -->
       <div class="absolute inset-0 flex items-center justify-center">
         <img
+          ref="imgEl"
           :src="imageUrl"
           :alt="facing === 'front' ? 'Photo front' : 'Photo back'"
           class="max-h-full max-w-full object-contain will-change-transform"
-          :class="!dragging ? 'transition-transform duration-100' : ''"
+          :class="settling ? 'transition-transform duration-300 [transition-timing-function:cubic-bezier(0.34,1.56,0.64,1)]' : 'transition-none'"
           :style="{ transform: `translate(${tx}px, ${ty}px) scale(${scale})` }"
           draggable="false"
         >
