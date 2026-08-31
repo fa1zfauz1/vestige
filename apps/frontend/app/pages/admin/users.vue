@@ -6,6 +6,17 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import {
   Table,
   TableBody,
   TableCell,
@@ -91,7 +102,7 @@ async function suspend(id: number) {
 
 onMounted(async () => {
   if (!authStore.isAdmin) {
-    await navigateTo('/archive')
+    await navigateTo('/gallery')
     return
   }
   await load()
@@ -106,7 +117,7 @@ onMounted(async () => {
       </div>
       <div>
         <h1 class="text-2xl font-semibold tracking-tight">User Management</h1>
-        <p class="text-sm text-muted-foreground">Manage every member of the archive.</p>
+        <p class="text-sm text-muted-foreground">Manage every member of the gallery.</p>
       </div>
     </div>
 
@@ -165,16 +176,34 @@ onMounted(async () => {
                   <CheckIcon class="size-3.5" />
                   <span class="sr-only sm:not-sr-only">Approve</span>
                 </Button>
-                <Button
-                  v-if="user.status === 'approved'"
-                  size="sm"
-                  variant="ghost"
-                  title="Suspend"
-                  @click="suspend(user.id)"
-                >
-                  <BanIcon class="size-3.5" />
-                  <span class="sr-only sm:not-sr-only">Suspend</span>
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger as-child>
+                    <Button
+                      v-if="user.status === 'approved'"
+                      size="sm"
+                      variant="ghost"
+                      title="Suspend"
+                    >
+                      <BanIcon class="size-3.5" />
+                      <span class="sr-only sm:not-sr-only">Suspend</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Suspend {{ user.name }}?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        They will no longer be able to access the gallery until you approve them again.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction variant="destructive" @click="suspend(user.id)">
+                        <BanIcon class="size-3.5" />
+                        Suspend
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </TableCell>
           </TableRow>

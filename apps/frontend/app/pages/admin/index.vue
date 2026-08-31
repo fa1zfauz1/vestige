@@ -90,7 +90,7 @@ function openReview(user: User, mode: 'approve' | 'reject') {
 
 onMounted(async () => {
   if (!authStore.isAdmin) {
-    await navigateTo('/archive')
+    await navigateTo('/gallery')
     return
   }
   await load()

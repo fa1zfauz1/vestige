@@ -187,7 +187,10 @@ function formatDate(value?: string | null) {
     :open="open"
     @update:open="onOpenChange"
   >
-    <DialogContent class="sm:max-w-5xl max-h-[94svh] overflow-y-auto">
+    <DialogContent
+      overlay-class="bg-black/70 backdrop-blur-xl"
+      class="sm:max-w-5xl max-h-[94svh] overflow-y-auto"
+    >
       <DialogHeader>
         <DialogTitle>{{ photo?.title }}</DialogTitle>
         <DialogDescription>
@@ -228,7 +231,7 @@ function formatDate(value?: string | null) {
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete this photo?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This permanently removes the photo and its back image from the archive.
+                  This permanently removes the photo and its back image from the gallery.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

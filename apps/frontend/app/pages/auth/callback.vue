@@ -25,7 +25,7 @@ onMounted(async () => {
     return
   }
 
-  await navigateTo('/archive', { replace: true })
+  await navigateTo('/gallery', { replace: true })
 })
 </script>
 
@@ -35,7 +35,7 @@ onMounted(async () => {
       <Loader2Icon class="size-8 animate-spin text-muted-foreground" />
       <div>
         <p class="text-sm font-medium">Signing you in…</p>
-        <p class="text-xs text-muted-foreground">Preparing your family archive.</p>
+        <p class="text-xs text-muted-foreground">Preparing your family gallery.</p>
       </div>
     </div>
   </div>

@@ -85,7 +85,7 @@ onMounted(load)
     <!-- Header -->
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">Discover your archive</h1>
+        <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">Discover your gallery</h1>
         <p class="mt-1 text-sm text-muted-foreground sm:text-base">
           Revisit and remix your family memories.
         </p>
@@ -112,7 +112,7 @@ onMounted(load)
           </div>
           <h2 class="mt-4 text-lg font-semibold">No photos yet</h2>
           <p class="mt-1 max-w-sm text-sm text-muted-foreground">
-            Start the family archive by uploading the first photograph and preserving its handwritten back.
+            Start the family gallery by uploading the first photograph and preserving its handwritten back.
           </p>
           <NuxtLink to="/upload" class="mt-6">
             <Button size="lg">

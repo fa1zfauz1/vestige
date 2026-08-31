@@ -42,7 +42,7 @@ const navItems = computed(() => {
 
   return [
     { label: 'Home', to: '/', icon: HomeIcon },
-    { label: 'Archive', to: '/archive', icon: ArchiveIcon },
+    { label: 'Gallery', to: '/gallery', icon: ArchiveIcon },
     { label: 'Map', to: '/map', icon: MapIcon },
     { label: 'Upload', to: '/upload', icon: UploadIcon },
   ]
@@ -66,7 +66,7 @@ const isSuspended = computed(() => authStore.user?.status === 'suspended')
 const isRejected = computed(() => authStore.user?.status === 'rejected')
 
 function initialsActive(itemTo: string) {
-  return (route.path === itemTo) || (itemTo === '/' && route.path === '/archive')
+  return (route.path === itemTo) || (itemTo === '/' && route.path === '/gallery')
 }
 
 watch(() => route.fullPath, () => {
@@ -299,9 +299,9 @@ watch(() => route.fullPath, () => {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem as-child>
-                <NuxtLink to="/archive" class="flex items-center gap-2">
+                <NuxtLink to="/gallery" class="flex items-center gap-2">
                   <ArchiveIcon class="size-4" />
-                  My archive
+                  My gallery
                 </NuxtLink>
               </DropdownMenuItem>
               <DropdownMenuItem v-if="authStore.isAdmin" as-child>

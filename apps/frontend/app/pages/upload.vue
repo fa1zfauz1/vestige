@@ -100,7 +100,7 @@ async function submit() {
     if (!res.ok) throw new Error('Upload failed')
 
     toast.success('Photo uploaded')
-    await navigateTo('/archive')
+    await navigateTo('/gallery')
   } catch {
     error.value = 'Upload failed. Please check the form and try again.'
   } finally {
