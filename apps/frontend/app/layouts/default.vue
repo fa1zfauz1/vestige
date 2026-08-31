@@ -13,6 +13,9 @@ import {
   ImagePlusIcon,
   UsersIcon,
   LayersIcon,
+  BanIcon,
+  UserCheckIcon,
+  UserCogIcon,
 } from '@lucide/vue'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -33,17 +36,24 @@ const apiBase = useRuntimeConfig().public.apiBase
 const mobileOpen = ref(false)
 
 const navItems = computed(() => {
-  const items = [
+  if (!authStore.user || authStore.user.status !== 'approved') {
+    return [{ label: 'Home', to: '/', icon: HomeIcon }]
+  }
+
+  return [
     { label: 'Home', to: '/', icon: HomeIcon },
     { label: 'Archive', to: '/archive', icon: ArchiveIcon },
     { label: 'Map', to: '/map', icon: MapIcon },
     { label: 'Upload', to: '/upload', icon: UploadIcon },
   ]
-  if (authStore.isAdmin) {
-    items.push({ label: 'Admin', to: '/admin', icon: ShieldCheckIcon })
-  }
-  return items
 })
+
+const adminCanAccess = computed(() => authStore.isAdmin && authStore.user?.status === 'approved')
+
+function adminNavActive(view: 'requests' | 'users') {
+  if (view === 'users') return route.path === '/admin/users'
+  return route.path === '/admin'
+}
 
 const fullName = computed(() => authStore.user?.name ?? 'Family member')
 const initials = computed(() => {
@@ -53,6 +63,7 @@ const initials = computed(() => {
 
 const isPending = computed(() => authStore.user?.status === 'pending')
 const isSuspended = computed(() => authStore.user?.status === 'suspended')
+const isRejected = computed(() => authStore.user?.status === 'rejected')
 
 function initialsActive(itemTo: string) {
   return (route.path === itemTo) || (itemTo === '/' && route.path === '/archive')
@@ -77,7 +88,7 @@ watch(() => route.fullPath, () => {
         <span class="text-base font-semibold tracking-tight">VESTIGE</span>
       </div>
 
-      <div v-if="authStore.user" class="px-3">
+      <div v-if="authStore.user && authStore.user.status === 'approved'" class="px-3">
         <div class="flex items-center gap-2 rounded-xl p-2 hover:bg-muted/60">
           <Avatar size="lg">
             <AvatarFallback>{{ initials }}</AvatarFallback>
@@ -102,17 +113,38 @@ watch(() => route.fullPath, () => {
       <template v-if="authStore.user">
         <Separator class="my-4" />
 
-        <nav class="flex-1 space-y-1 overflow-y-auto px-3">
-          <template v-for="(item, i) in navItems" :key="item.to">
+        <nav class="flex-1 space-y-1 overflow-y-auto px-3 text-sm">
+          <NuxtLink
+            v-for="item in navItems"
+            :key="item.to"
+            :to="item.to"
+            class="flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium transition-colors"
+            :class="initialsActive(item.to) ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+          >
+            <component :is="item.icon" class="size-4" />
+            {{ item.label }}
+          </NuxtLink>
+
+          <template v-if="adminCanAccess">
+            <p class="px-3 pt-4 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+              Admin access
+            </p>
             <NuxtLink
-              :to="item.to"
-              class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
-              :class="initialsActive(item.to) ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+              to="/admin"
+              class="flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium transition-colors"
+              :class="adminNavActive('requests') ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
             >
-              <component :is="item.icon" class="size-4" />
-              {{ item.label }}
+              <UserCheckIcon class="size-4" />
+              Approval Request
             </NuxtLink>
-            <Separator v-if="i === navItems.length - 2 && authStore.isAdmin" class="my-2" />
+            <NuxtLink
+              to="/admin/users"
+              class="flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium transition-colors"
+              :class="adminNavActive('users') ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+            >
+              <UserCogIcon class="size-4" />
+              User Management
+            </NuxtLink>
           </template>
         </nav>
       </template>
@@ -149,7 +181,7 @@ watch(() => route.fullPath, () => {
           </Button>
         </div>
 
-        <div v-if="authStore.user" class="px-3">
+        <div v-if="authStore.user && authStore.user.status === 'approved'" class="px-3">
           <div class="flex items-center gap-2 rounded-xl p-2">
             <Avatar size="lg">
               <AvatarFallback>{{ initials }}</AvatarFallback>
@@ -170,17 +202,39 @@ watch(() => route.fullPath, () => {
         <template v-if="authStore.user">
           <Separator class="my-4" />
 
-          <nav class="flex-1 space-y-1 overflow-y-auto px-3">
+          <nav class="flex-1 space-y-1 overflow-y-auto px-3 text-sm">
             <NuxtLink
               v-for="item in navItems"
               :key="item.to"
               :to="item.to"
-              class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+              class="flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium transition-colors"
               :class="initialsActive(item.to) ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
             >
               <component :is="item.icon" class="size-4" />
               {{ item.label }}
             </NuxtLink>
+
+            <template v-if="adminCanAccess">
+              <p class="px-3 pt-4 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                Admin access
+              </p>
+              <NuxtLink
+                to="/admin"
+                class="flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium transition-colors"
+                :class="adminNavActive('requests') ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+              >
+                <UserCheckIcon class="size-4" />
+                Approval Request
+              </NuxtLink>
+              <NuxtLink
+                to="/admin/users"
+                class="flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium transition-colors"
+                :class="adminNavActive('users') ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+              >
+                <UserCogIcon class="size-4" />
+                User Management
+              </NuxtLink>
+            </template>
           </nav>
         </template>
 
@@ -274,11 +328,15 @@ watch(() => route.fullPath, () => {
       </header>
 
       <!-- Pending / suspended banner -->
-      <div v-if="isPending || isSuspended" class="px-4 pt-4 lg:px-6">
+      <div v-if="isPending || isRejected || isSuspended" class="px-4 pt-4 lg:px-6">
         <div class="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
           <p v-if="isPending" class="flex items-center gap-2">
             <ClockIcon class="size-4" />
             <span>Your account is <b>pending approval</b>. You'll get access once an administrator approves you.</span>
+          </p>
+          <p v-else-if="isRejected" class="flex items-start gap-2">
+            <BanIcon class="mt-0.5 size-4 shrink-0" />
+            <span>Your account was <b>not approved</b>. {{ authStore.user?.rejection_reason || 'Contact an administrator for help.' }}</span>
           </p>
           <p v-else class="flex items-center gap-2">
             <LayersIcon class="size-4" />

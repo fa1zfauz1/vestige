@@ -55,8 +55,18 @@ function clearPreview(target: 'front' | 'back') {
   }
 }
 
+onMounted(async () => {
+  if (!authStore.token || (authStore.user && authStore.user.status !== 'approved')) {
+    await navigateTo('/')
+  }
+})
+
 async function submit() {
   if (!authStore.token) return
+  if (authStore.user && authStore.user.status !== 'approved') {
+    await navigateTo('/')
+    return
+  }
   if (!frontImage.value) {
     error.value = 'Please choose a front image.'
     return
