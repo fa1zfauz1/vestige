@@ -6,6 +6,7 @@ import {
   MenuIcon,
   SearchIcon,
   UploadIcon,
+  MapIcon,
   ShieldCheckIcon,
   LogOutIcon,
   XIcon,
@@ -35,6 +36,7 @@ const navItems = computed(() => {
   const items = [
     { label: 'Home', to: '/', icon: HomeIcon },
     { label: 'Archive', to: '/archive', icon: ArchiveIcon },
+    { label: 'Map', to: '/map', icon: MapIcon },
     { label: 'Upload', to: '/upload', icon: UploadIcon },
   ]
   if (authStore.isAdmin) {
@@ -110,7 +112,7 @@ watch(() => route.fullPath, () => {
               <component :is="item.icon" class="size-4" />
               {{ item.label }}
             </NuxtLink>
-            <Separator v-if="i === 2 && authStore.isAdmin" class="my-2" />
+            <Separator v-if="i === navItems.length - 2 && authStore.isAdmin" class="my-2" />
           </template>
         </nav>
       </template>

@@ -13,6 +13,7 @@ const props = defineProps<{
     location?: string | null
     front_image_url: string
     back_image_url?: string | null
+    uploaded_by: number
     uploader?: { name: string } | null
   }
   class?: string

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
+import LocationField, { type PlaceLocation } from '@/components/LocationField.vue'
 
 const authStore = useAuthStore()
 const apiBase = useRuntimeConfig().public.apiBase
@@ -19,12 +20,13 @@ const backImage = ref<File | null>(null)
 const frontPreview = ref<string | null>(null)
 const backPreview = ref<string | null>(null)
 
+const locationValue = ref<PlaceLocation>({ location: '', latitude: null, longitude: null })
+
 const form = reactive({
   title: '',
   description: '',
   taken_year: '',
   taken_date: '',
-  location: '',
 })
 
 function fileFromEvent(event: Event) {
@@ -74,7 +76,9 @@ async function submit() {
   if (form.description) data.append('description', form.description)
   if (form.taken_year) data.append('taken_year', form.taken_year)
   if (form.taken_date) data.append('taken_date', form.taken_date)
-  if (form.location) data.append('location', form.location)
+  if (locationValue.value.location) data.append('location', locationValue.value.location)
+  if (locationValue.value.latitude != null) data.append('latitude', String(locationValue.value.latitude))
+  if (locationValue.value.longitude != null) data.append('longitude', String(locationValue.value.longitude))
 
   try {
     const res = await fetch(`${apiBase}/photos`, {
@@ -183,8 +187,8 @@ async function submit() {
               <Input id="taken_date" v-model="form.taken_date" type="date" />
             </div>
             <div class="space-y-2 sm:col-span-2">
-              <Label for="location">Location</Label>
-              <Input id="location" v-model="form.location" placeholder="e.g. Kuala Lumpur" />
+              <Label>Location</Label>
+              <LocationField v-model="locationValue" />
             </div>
           </div>
 

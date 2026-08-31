@@ -36,6 +36,8 @@ class PhotoController extends Controller
             'taken_year' => 'nullable|integer|min:1800|max:' . date('Y'),
             'taken_date' => 'nullable|date',
             'location' => 'nullable|string|max:255',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
         ]);
 
         $frontPath = $request->file('front_image')->store('photos', 'minio');
@@ -53,6 +55,8 @@ class PhotoController extends Controller
             'taken_year' => $validated['taken_year'] ?? null,
             'taken_date' => $validated['taken_date'] ?? null,
             'location' => $validated['location'] ?? null,
+            'latitude' => $validated['latitude'] ?? null,
+            'longitude' => $validated['longitude'] ?? null,
             'uploaded_by' => $request->user()->id,
         ]);
 
@@ -74,21 +78,33 @@ class PhotoController extends Controller
 
     public function update(Request $request, Photo $photo)
     {
+        $this->ensureUploader($request, $photo);
+
         $validated = $request->validate([
             'title' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
             'taken_year' => 'nullable|integer|min:1800|max:' . date('Y'),
             'taken_date' => 'nullable|date',
             'location' => 'nullable|string|max:255',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
         ]);
 
         $photo->update($validated);
+
+        $photo->load('uploader');
+        $photo->front_image_url = $this->signedObjectUrl($photo->front_image_path);
+        if ($photo->back_image_path) {
+            $photo->back_image_url = $this->signedObjectUrl($photo->back_image_path);
+        }
 
         return response()->json($photo);
     }
 
     public function rotate(Request $request, Photo $photo)
     {
+        $this->ensureUploader($request, $photo);
+
         $validated = $request->validate([
             'direction' => 'required|in:left,right',
             'target' => 'sometimes|in:front,back',
@@ -149,8 +165,10 @@ class PhotoController extends Controller
         return response()->json($photo);
     }
 
-    public function destroy(Photo $photo)
+    public function destroy(Request $request, Photo $photo)
     {
+        $this->ensureUploader($request, $photo);
+
         Storage::disk('minio')->delete($photo->front_image_path);
 
         if ($photo->back_image_path) {
@@ -160,6 +178,13 @@ class PhotoController extends Controller
         $photo->delete();
 
         return response()->json(null, 204);
+    }
+
+    private function ensureUploader(Request $request, Photo $photo)
+    {
+        if ($request->user()->id !== $photo->uploaded_by) {
+            abort(403, 'Only the uploader can modify this photo');
+        }
     }
 
     private function signedObjectUrl(string $path, int $minutes = 5): string
