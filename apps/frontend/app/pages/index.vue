@@ -44,7 +44,7 @@ async function submitAppeal() {
 }
 
 const features = [
-  { icon: LockKeyholeIcon, title: 'Private by design', description: 'Sign in with Google and only approved family members can view the archive.' },
+  { icon: LockKeyholeIcon, title: 'Private by design', description: 'Sign in with Google and only approved family members can view the gallery.' },
   { icon: ArchiveIcon, title: 'Front & back scanning', description: 'Upload the photo and its handwritten back so no handwritten memory is lost.' },
   { icon: SparklesIcon, title: 'Searchable memories', description: 'Attach dates, places and stories so you can rediscover moments instantly.' },
 ]
@@ -64,10 +64,10 @@ const features = [
         Revisit photographs, flip the backs, and keep stories alive.
       </p>
       <div class="mt-8 flex flex-col gap-3 sm:flex-row">
-        <NuxtLink to="/archive">
+        <NuxtLink to="/gallery">
           <Button size="lg">
             <ArchiveIcon class="size-4" />
-            Open your archive
+            Open your gallery
           </Button>
         </NuxtLink>
         <NuxtLink to="/upload">
@@ -88,7 +88,7 @@ const features = [
       </h1>
       <p class="mt-3 text-base text-muted-foreground italic sm:text-lg">For the stories that outlive us.</p>
       <p class="mt-4 max-w-xl text-base text-muted-foreground sm:text-lg">
-        {{ authStore.user.rejection_reason || 'The administrator did not approve your request for access to this archive.' }}
+        {{ authStore.user.rejection_reason || 'The administrator did not approve your request for access to this gallery.' }}
       </p>
 
       <div class="mt-8 w-full max-w-md rounded-2xl border border-border bg-card p-5 text-left">
@@ -142,7 +142,7 @@ const features = [
         <NuxtLink to="/upload" class="w-full">
           <Button size="lg" variant="outline" class="w-full">
             <ImagePlusIcon class="size-4" />
-            Explore the archive
+            Explore the gallery
           </Button>
         </NuxtLink>
       </div>

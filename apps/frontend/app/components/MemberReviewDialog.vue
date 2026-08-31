@@ -74,7 +74,7 @@ async function submit() {
         <DialogDescription>
           {{
             mode === 'approve'
-              ? 'Approve this member for access to the archive.'
+              ? 'Approve this member for access to the gallery.'
               : 'Provide a reason — the member will see it when they sign in.'
           }}
         </DialogDescription>
