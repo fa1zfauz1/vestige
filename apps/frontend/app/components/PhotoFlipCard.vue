@@ -9,11 +9,15 @@ import {
   MaximizeIcon,
 } from '@lucide/vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   frontUrl: string
   backUrl?: string | null
   busy?: boolean
-}>()
+  canEdit?: boolean
+}>(), {
+  busy: false,
+  canEdit: false,
+})
 
 const emit = defineEmits<{
   (e: 'rotate', direction: 'left' | 'right', side: 'front' | 'back'): void
@@ -235,6 +239,7 @@ watch(() => props.backUrl, () => resetView())
 
       <!-- Rotate controls (dark fade from bottom, on hover) -->
       <div
+        v-if="canEdit"
         class="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 pb-2.5 pt-8 opacity-100 transition-opacity duration-200 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
       >
         <button
