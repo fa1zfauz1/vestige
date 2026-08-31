@@ -38,6 +38,11 @@ async function load() {
     return
   }
 
+  if (authStore.user && authStore.user.status !== 'approved') {
+    await navigateTo('/')
+    return
+  }
+
   loading.value = true
   try {
     const res = await fetch(`${apiBase}/photos`, {

@@ -12,8 +12,11 @@ Route::middleware('web')->prefix('auth')->group(function () {
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('user', [AuthController::class, 'user']);
+    Route::post('appeal', [AuthController::class, 'appeal']);
     Route::post('logout', [AuthController::class, 'logout']);
+});
 
+Route::middleware(['auth:sanctum', 'approved'])->group(function () {
     Route::apiResource('photos', PhotoController::class);
     Route::post('photos/{photo}/rotate', [PhotoController::class, 'rotate']);
 

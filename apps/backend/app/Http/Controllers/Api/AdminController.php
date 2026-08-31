@@ -8,12 +8,6 @@ use Illuminate\Http\Request;
 
 class AdminController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware('auth:sanctum');
-        $this->middleware('can:admin');
-    }
-
     public function pendingUsers()
     {
         return User::where('status', 'pending')->get();
@@ -21,14 +15,26 @@ class AdminController extends Controller
 
     public function approve(User $user)
     {
-        $user->update(['status' => 'approved']);
+        $user->update([
+            'status' => 'approved',
+            'rejection_reason' => null,
+            'appeal_reason' => null,
+        ]);
 
         return response()->json($user);
     }
 
-    public function reject(User $user)
+    public function reject(Request $request, User $user)
     {
-        $user->update(['status' => 'rejected']);
+        $validated = $request->validate([
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        $user->update([
+            'status' => 'rejected',
+            'rejection_reason' => $validated['reason'],
+            'appeal_reason' => null,
+        ]);
 
         return response()->json($user);
     }

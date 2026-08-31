@@ -6,6 +6,8 @@ interface User {
   email: string
   role: string
   status: string
+  rejection_reason?: string | null
+  appeal_reason?: string | null
 }
 
 export const useAuthStore = defineStore('auth', () => {

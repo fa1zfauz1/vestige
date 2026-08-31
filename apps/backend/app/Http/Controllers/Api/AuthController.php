@@ -23,8 +23,10 @@ class AuthController extends Controller
         }
 
         $user = User::where('email', $socialUser->email)->first();
+        $isNewUser = false;
 
         if (!$user) {
+            $isNewUser = true;
             $isAdmin = $socialUser->email === env('APP_ADMIN_EMAIL');
 
             $user = User::create([
@@ -39,12 +41,34 @@ class AuthController extends Controller
         $token = $user->createToken('auth-token')->plainTextToken;
         $redirectUrl = rtrim(env('FRONTEND_URL', env('APP_URL', 'http://localhost')), '/') . '/auth/callback';
 
-        return redirect()->away($redirectUrl . '#token=' . urlencode($token));
+        return redirect()->away(
+            $redirectUrl . '#token=' . urlencode($token) . ($isNewUser ? '&new=1' : '')
+        );
     }
 
     public function user(Request $request)
     {
         return $request->user();
+    }
+
+    public function appeal(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'reason' => 'required|string|max:1000',
+        ]);
+
+        if ($user->status !== 'rejected') {
+            return response()->json(['message' => 'Only accounts that were not approved can appeal'], 422);
+        }
+
+        $user->update([
+            'status' => 'pending',
+            'appeal_reason' => $validated['reason'],
+        ]);
+
+        return response()->json(['message' => 'Your appeal has been submitted for review.']);
     }
 
     public function logout(Request $request)
