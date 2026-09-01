@@ -6,12 +6,12 @@ use App\Http\Controllers\Api\PhotoController;
 use App\Http\Controllers\Api\ProfileController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('web')->prefix('auth')->group(function () {
+Route::middleware(['web', 'throttle:auth'])->prefix('auth')->group(function () {
     Route::get('google/redirect', [AuthController::class, 'redirectToGoogle']);
     Route::get('google/callback', [AuthController::class, 'handleGoogleCallback']);
 });
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('user', [AuthController::class, 'user']);
     Route::post('appeal', [AuthController::class, 'appeal']);
     Route::post('logout', [AuthController::class, 'logout']);
@@ -19,7 +19,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('profile/remove-avatar', [ProfileController::class, 'removeAvatar']);
 });
 
-Route::middleware(['auth:sanctum', 'approved'])->group(function () {
+Route::middleware(['auth:sanctum', 'approved', 'throttle:api'])->group(function () {
     Route::get('approved-users', [AuthController::class, 'approvedUsers']);
     Route::apiResource('photos', PhotoController::class);
     Route::post('photos/{photo}/rotate', [PhotoController::class, 'rotate']);
@@ -31,7 +31,9 @@ Route::middleware(['auth:sanctum', 'approved'])->group(function () {
         Route::post('users/{user}/reject', [AdminController::class, 'reject']);
         Route::post('users/{user}/suspend', [AdminController::class, 'suspend']);
         Route::post('users/{user}/role', [AdminController::class, 'updateRole']);
+        Route::delete('users/{user}', [AdminController::class, 'destroy']);
         Route::get('users', [AdminController::class, 'users']);
+        Route::get('activity-logs', [AdminController::class, 'activityLogs']);
     });
 });
 

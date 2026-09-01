@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
-import { UserCogIcon, CheckIcon, BanIcon, ShieldCheckIcon } from '@lucide/vue'
+import { UserCogIcon, CheckIcon, BanIcon, ShieldCheckIcon, Trash2Icon } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -80,6 +80,29 @@ async function confirmRole() {
     toast.error('Could not update the role')
   } finally {
     roleBusy.value = false
+  }
+}
+
+const deleteTarget = ref<{ id: number; name: string } | null>(null)
+const deleteBusy = ref(false)
+
+async function confirmDelete() {
+  const target = deleteTarget.value
+  if (!target) return
+  deleteBusy.value = true
+  try {
+    const res = await fetch(`${apiBase}/admin/users/${target.id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${authStore.token}` },
+    })
+    if (!res.ok) throw new Error('Delete failed')
+    toast.success('User deleted')
+    deleteTarget.value = null
+    await load()
+  } catch {
+    toast.error('Could not delete the user')
+  } finally {
+    deleteBusy.value = false
   }
 }
 
@@ -269,6 +292,16 @@ onMounted(async () => {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+                <Button
+                  v-if="authStore.user && authStore.user.id !== user.id"
+                  size="sm"
+                  variant="ghost"
+                  class="w-full justify-center rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20"
+                  @click="deleteTarget = { id: user.id, name: user.name }"
+                >
+                  <Trash2Icon class="size-3.5" />
+                  Delete
+                </Button>
               </div>
             </TableCell>
           </TableRow>
@@ -304,6 +337,25 @@ onMounted(async () => {
           </Button>
           <Button :disabled="roleBusy" @click="confirmRole">
             {{ roleBusy ? 'Saving…' : roleTarget?.role === 'admin' ? 'Make admin' : 'Remove admin' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog :open="!!deleteTarget" @update:open="(v) => { if (!v) deleteTarget = null }">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Delete {{ deleteTarget?.name }}?</DialogTitle>
+          <DialogDescription>
+            This permanently removes the user and all of their photos. This cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="ghost" :disabled="deleteBusy" @click="deleteTarget = null">
+            Cancel
+          </Button>
+          <Button variant="destructive" :disabled="deleteBusy" @click="confirmDelete">
+            {{ deleteBusy ? 'Deleting…' : 'Delete user' }}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -16,8 +16,10 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME}-nginx
     ports:
       - "${APP_PORT:-80}:80"
+      - "${APP_HTTPS_PORT:-443}:443"
     volumes:
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - backend
       - frontend
@@ -43,7 +45,7 @@ services:
       - DB_USERNAME=${POSTGRES_USER:-archive_user}
       - DB_PASSWORD=${POSTGRES_PASSWORD:-secret}
       - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-null}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-devredispassword}
       - REDIS_PORT=${REDIS_PORT:-6379}
       - FILESYSTEM_DISK=minio
       - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}

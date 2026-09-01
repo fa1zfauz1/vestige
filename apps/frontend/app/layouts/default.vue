@@ -16,6 +16,7 @@ import {
   UserCheckIcon,
   UserCogIcon,
   UserIcon,
+  ScrollTextIcon,
 } from '@lucide/vue'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -50,8 +51,9 @@ const navItems = computed(() => {
 
 const adminCanAccess = computed(() => authStore.isAdmin && authStore.user?.status === 'approved')
 
-function adminNavActive(view: 'requests' | 'users') {
+function adminNavActive(view: 'requests' | 'users' | 'logs') {
   if (view === 'users') return route.path === '/admin/users'
+  if (view === 'logs') return route.path === '/admin/activity'
   return route.path === '/admin'
 }
 
@@ -150,6 +152,14 @@ watch(() => route.fullPath, () => {
               <UserCogIcon class="size-4" />
               User Management
             </NuxtLink>
+            <NuxtLink
+              to="/admin/activity"
+              class="flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium transition-colors"
+              :class="adminNavActive('logs') ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+            >
+              <ScrollTextIcon class="size-4" />
+              Audit Log
+            </NuxtLink>
           </template>
         </nav>
       </template>
@@ -243,6 +253,14 @@ watch(() => route.fullPath, () => {
               >
                 <UserCogIcon class="size-4" />
                 User Management
+              </NuxtLink>
+              <NuxtLink
+                to="/admin/activity"
+                class="flex items-center gap-2.5 rounded-lg px-3 py-2 font-medium transition-colors"
+                :class="adminNavActive('logs') ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+              >
+                <ScrollTextIcon class="size-4" />
+                Audit Log
               </NuxtLink>
             </template>
           </nav>
