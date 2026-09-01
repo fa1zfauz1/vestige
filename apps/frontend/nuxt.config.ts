@@ -17,4 +17,11 @@ export default defineNuxtConfig({
       apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost/api',
     },
   },
+  // Vite dev server host protection: allow Tailscale MagicDNS hosts so the
+  // app is reachable via https://<host>.tail*.ts.net through Tailscale HTTPS.
+  vite: {
+    server: {
+      allowedHosts: ['.ts.net'],
+    },
+  },
 })

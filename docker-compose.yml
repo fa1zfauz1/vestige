@@ -78,7 +78,7 @@ services:
       dockerfile: docker/frontend/Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME}-frontend
     environment:
-      - NUXT_PUBLIC_API_BASE=http://localhost/api
+      - NUXT_PUBLIC_API_BASE=https://faizfauzi-server.tail6fd5e5.ts.net/api
       - NUXT_HOST=0.0.0.0
       - NUXT_PORT=3000
     volumes:
@@ -194,8 +194,8 @@ services:
       /bin/sh -c "
       mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-minioadmin} ${MINIO_ROOT_PASSWORD:-minioadmin};
       mc mb local/${MINIO_BUCKET:-photos} --ignore-existing;
-      mc policy set download local/${MINIO_BUCKET:-photos};
-      echo 'MinIO bucket \`${MINIO_BUCKET:-photos}\' ready.';
+      mc anonymous set download local/${MINIO_BUCKET:-photos};
+      echo 'MinIO bucket ready: ${MINIO_BUCKET:-photos}';
       "
     profiles:
       - setup
