@@ -6,6 +6,8 @@ import {
   FileTextIcon,
   Trash2Icon,
   PencilIcon,
+  ChevronDownIcon,
+  CheckIcon,
 } from '@lucide/vue'
 import { useAuthStore } from '~/stores/auth'
 import { toast } from 'vue-sonner'
@@ -49,6 +51,7 @@ type Photo = {
   back_image_url?: string | null
   uploaded_by: number
   uploader?: { name: string } | null
+  shared_with?: { id: number; name: string; email?: string }[]
 }
 
 const props = defineProps<{
@@ -77,6 +80,75 @@ const editLoc = ref<PlaceLocation>({ location: '', latitude: null, longitude: nu
 const canEdit = computed(() =>
   props.photo?.uploaded_by != null && authStore.user?.id === props.photo.uploaded_by,
 )
+
+const selectedIds = ref<string[]>([])
+const members = ref<{ id: number; name: string; email?: string }[]>([])
+const shareBusy = ref(false)
+const openShare = ref(false)
+
+const selectedMembers = computed(() =>
+  members.value.filter((m) => selectedIds.value.includes(String(m.id))),
+)
+
+function toggleMember(id: number) {
+  const str = String(id)
+  const next = selectedIds.value.includes(str)
+    ? selectedIds.value.filter((x) => x !== str)
+    : [...selectedIds.value, str]
+  onShareChange(next)
+}
+
+function syncShared() {
+  selectedIds.value = props.photo?.shared_with?.map((s) => String(s.id)) ?? []
+}
+
+async function loadMembers() {
+  if (!canEdit.value || members.value.length) return
+  try {
+    const res = await fetch(`${apiBase}/approved-users`, {
+      headers: { Authorization: `Bearer ${authStore.token}` },
+    })
+    if (res.ok) members.value = await res.json()
+  } catch {
+    members.value = []
+  }
+}
+
+async function saveShare(ids: number[]) {
+  if (!props.photo) return
+  shareBusy.value = true
+  try {
+    const res = await fetch(`${apiBase}/photos/${props.photo.id}/share`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${authStore.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ user_ids: ids }),
+    })
+    if (!res.ok) throw new Error('Share failed')
+    const updated = (await res.json()) as Photo
+    emit('updated', updated)
+    selectedIds.value = updated.shared_with?.map((s) => String(s.id)) ?? []
+    toast.success('Photo sharing updated')
+  } catch {
+    toast.error('Could not update sharing')
+  } finally {
+    shareBusy.value = false
+  }
+}
+
+function onShareChange(next: unknown) {
+  if (shareBusy.value) return
+  const arr = Array.isArray(next) ? next.map(String) : (next ? [String(next)] : [])
+  selectedIds.value = arr
+  saveShare(arr.map(Number))
+}
+
+watch(() => props.photo?.id, async () => {
+  syncShared()
+  await loadMembers()
+}, { immediate: true })
 
 function onOpenChange(value: boolean) {
   emit('update:open', value)
@@ -317,6 +389,61 @@ function formatDate(value?: string | null) {
             </div>
           </div>
         </template>
+
+        <div v-if="canEdit" class="rounded-xl border border-border p-4">
+          <p class="text-sm font-medium">Shared with family</p>
+          <p class="mt-0.5 text-xs text-muted-foreground">
+            Choose the family members who can also view this photo.
+          </p>
+
+          <div class="relative mt-3">
+            <button
+              type="button"
+              class="flex min-h-8 w-full items-center gap-2 rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm text-left outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+              @click="openShare = !openShare"
+            >
+              <span class="min-w-0 flex-1">
+                <span v-if="selectedIds.length" class="flex flex-wrap gap-1">
+                  <span
+                    v-for="m in selectedMembers"
+                    :key="m.id"
+                    class="rounded-full bg-muted px-2 py-0.5 text-xs font-medium"
+                  >
+                    {{ m.name }}
+                  </span>
+                </span>
+                <span v-else class="text-muted-foreground">None — only you can view</span>
+              </span>
+              <ChevronDownIcon class="size-4 shrink-0 text-muted-foreground" />
+            </button>
+
+            <div
+              v-if="openShare"
+              class="absolute z-20 mt-1 max-h-52 w-full overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-md"
+            >
+              <button
+                v-for="m in members"
+                :key="m.id"
+                type="button"
+                class="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                @click="toggleMember(m.id)"
+              >
+                <span class="truncate">{{ m.name }}</span>
+                <CheckIcon
+                  v-if="selectedIds.includes(String(m.id))"
+                  class="size-4 shrink-0 text-foreground"
+                />
+              </button>
+              <p v-if="members.length === 0" class="px-2 py-2 text-xs text-muted-foreground">
+                No other approved members yet.
+              </p>
+            </div>
+          </div>
+
+          <p v-if="shareBusy" class="mt-2 text-xs text-muted-foreground">
+            Saving sharing…
+          </p>
+        </div>
       </div>
     </DialogContent>
   </Dialog>

@@ -51,6 +51,14 @@ class AuthController extends Controller
         return $request->user();
     }
 
+    public function approvedUsers(Request $request)
+    {
+        return \App\Models\User::where('status', 'approved')
+            ->where('id', '!=', $request->user()->id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+    }
+
     public function appeal(Request $request)
     {
         $user = $request->user();
