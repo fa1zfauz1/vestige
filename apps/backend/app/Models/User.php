@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'nickname', 'email', 'password', 'google_id', 'status', 'role', 'birth_date', 'avatar_path', 'rejection_reason', 'appeal_reason'])]
@@ -58,5 +59,10 @@ class User extends Authenticatable
     public function isSuspended(): bool
     {
         return $this->status === 'suspended';
+    }
+
+    public function photos(): HasMany
+    {
+        return $this->hasMany(Photo::class, 'uploaded_by');
     }
 }

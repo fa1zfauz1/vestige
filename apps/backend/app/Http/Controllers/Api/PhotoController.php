@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Photo;
+use App\Support\AuditLog;
 use Aws\S3\S3Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -69,6 +70,8 @@ class PhotoController extends Controller
             'uploaded_by' => $request->user()->id,
         ]);
 
+        AuditLog::record('photo.created', $photo, 'Photo uploaded: ' . $validated['title'], $request->user());
+
         return response()->json($photo, 201);
     }
 
@@ -107,6 +110,13 @@ class PhotoController extends Controller
 
         $photo->sharedWith()->sync($userIds);
 
+        AuditLog::record(
+            'photo.shared',
+            $photo,
+            'Shared with ' . count($userIds) . ' member(s)',
+            $request->user(),
+        );
+
         $photo->load(['uploader', 'sharedWith:id,name,email']);
         $photo->front_image_url = $this->signedObjectUrl($photo->front_image_path);
         if ($photo->back_image_path) {
@@ -139,6 +149,8 @@ class PhotoController extends Controller
         if ($photo->back_image_path) {
             $photo->back_image_url = $this->signedObjectUrl($photo->back_image_path);
         }
+
+        AuditLog::record('photo.updated', $photo, 'Photo details updated: ' . $photo->title, $request->user());
 
         return response()->json($photo);
     }
@@ -198,6 +210,8 @@ class PhotoController extends Controller
 
         Storage::disk('minio')->put($path, $output);
 
+        AuditLog::record('photo.rotated', $photo, 'Rotated ' . $target . ' image ' . $validated['direction'], $request->user());
+
         $photo->load('uploader');
         $photo->front_image_url = $this->signedObjectUrl($photo->front_image_path);
         if ($photo->back_image_path) {
@@ -210,6 +224,8 @@ class PhotoController extends Controller
     public function destroy(Request $request, Photo $photo)
     {
         $this->ensureUploader($request, $photo);
+
+        AuditLog::record('photo.deleted', $photo, 'Photo deleted: ' . $photo->title, $request->user());
 
         Storage::disk('minio')->delete($photo->front_image_path);
 

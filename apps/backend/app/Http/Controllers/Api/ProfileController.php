@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\AuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -37,6 +38,8 @@ class ProfileController extends Controller
 
         $user->save();
 
+        AuditLog::record('user.updated', $user, 'Profile updated', $user);
+
         return response()->json($user);
     }
 
@@ -48,6 +51,8 @@ class ProfileController extends Controller
             Storage::disk('minio')->delete($user->avatar_path);
             $user->avatar_path = null;
             $user->save();
+
+            AuditLog::record('user.updated', $user, 'Profile picture removed', $user);
         }
 
         return response()->json($user);
