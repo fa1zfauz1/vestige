@@ -11,13 +11,13 @@ import {
   LogOutIcon,
   XIcon,
   ImagePlusIcon,
-  UsersIcon,
   LayersIcon,
   BanIcon,
   UserCheckIcon,
   UserCogIcon,
+  UserIcon,
 } from '@lucide/vue'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -66,7 +66,7 @@ const isSuspended = computed(() => authStore.user?.status === 'suspended')
 const isRejected = computed(() => authStore.user?.status === 'rejected')
 
 function initialsActive(itemTo: string) {
-  return (route.path === itemTo) || (itemTo === '/' && route.path === '/gallery')
+  return route.path === itemTo
 }
 
 watch(() => route.fullPath, () => {
@@ -90,15 +90,20 @@ watch(() => route.fullPath, () => {
 
       <div v-if="authStore.user && authStore.user.status === 'approved'" class="px-3">
         <div class="flex items-center gap-2 rounded-xl p-2 hover:bg-muted/60">
-          <Avatar size="lg">
-            <AvatarFallback>{{ initials }}</AvatarFallback>
-          </Avatar>
-          <div class="min-w-0 flex-1">
-            <p class="truncate text-sm font-medium">{{ fullName }}</p>
-            <p class="truncate text-xs text-muted-foreground capitalize">{{ authStore.user?.role?.replace('_', ' ') }}</p>
-          </div>
-          <Button variant="ghost" size="icon-sm" aria-label="Switch account">
-            <UsersIcon class="size-4" />
+          <NuxtLink to="/profile" class="flex min-w-0 flex-1 items-center gap-2">
+            <Avatar size="lg">
+              <AvatarImage v-if="authStore.user?.avatar_url" :src="authStore.user.avatar_url" alt="" />
+              <AvatarFallback>{{ initials }}</AvatarFallback>
+            </Avatar>
+            <div class="min-w-0">
+              <p class="truncate text-sm font-medium">{{ fullName }}</p>
+              <p class="truncate text-xs text-muted-foreground capitalize">{{ authStore.user?.role?.replace('_', ' ') }}</p>
+            </div>
+          </NuxtLink>
+          <Button as-child variant="ghost" size="icon-sm" aria-label="My profile">
+            <NuxtLink to="/profile">
+              <UserIcon class="size-4" />
+            </NuxtLink>
           </Button>
         </div>
 
@@ -182,15 +187,20 @@ watch(() => route.fullPath, () => {
         </div>
 
         <div v-if="authStore.user && authStore.user.status === 'approved'" class="px-3">
-          <div class="flex items-center gap-2 rounded-xl p-2">
+          <NuxtLink
+            to="/profile"
+            class="flex items-center gap-2 rounded-xl p-2"
+            @click="mobileOpen = false"
+          >
             <Avatar size="lg">
+              <AvatarImage v-if="authStore.user?.avatar_url" :src="authStore.user.avatar_url" alt="" />
               <AvatarFallback>{{ initials }}</AvatarFallback>
             </Avatar>
             <div class="min-w-0 flex-1">
               <p class="truncate text-sm font-medium">{{ fullName }}</p>
               <p class="truncate text-xs text-muted-foreground capitalize">{{ authStore.user?.role?.replace('_', ' ') }}</p>
             </div>
-          </div>
+          </NuxtLink>
           <Button as-child variant="secondary" class="mt-2 w-full" @click="mobileOpen = false">
             <NuxtLink to="/upload" class="flex items-center gap-2">
               <ImagePlusIcon class="size-4" />
@@ -281,6 +291,7 @@ watch(() => route.fullPath, () => {
               <DropdownMenuTrigger as-child>
                 <button class="flex size-8 items-center justify-center rounded-full" aria-label="Open account menu">
                   <Avatar size="default">
+                    <AvatarImage v-if="authStore.user?.avatar_url" :src="authStore.user.avatar_url" alt="" />
                     <AvatarFallback class="bg-primary text-primary-foreground">{{ initials }}</AvatarFallback>
                   </Avatar>
                 </button>
@@ -289,6 +300,7 @@ watch(() => route.fullPath, () => {
               <DropdownMenuLabel class="font-normal">
                 <div class="flex items-center gap-2">
                   <Avatar size="sm">
+                    <AvatarImage v-if="authStore.user?.avatar_url" :src="authStore.user.avatar_url" alt="" />
                     <AvatarFallback>{{ initials }}</AvatarFallback>
                   </Avatar>
                   <div class="min-w-0">
@@ -298,6 +310,12 @@ watch(() => route.fullPath, () => {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem as-child>
+                <NuxtLink to="/profile" class="flex items-center gap-2">
+                  <UserIcon class="size-4" />
+                  My profile
+                </NuxtLink>
+              </DropdownMenuItem>
               <DropdownMenuItem as-child>
                 <NuxtLink to="/gallery" class="flex items-center gap-2">
                   <ArchiveIcon class="size-4" />

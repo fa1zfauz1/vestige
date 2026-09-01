@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { useAuthStore } from '~/stores/auth'
-import { UserCogIcon, CheckIcon, BanIcon } from '@lucide/vue'
+import { UserCogIcon, CheckIcon, BanIcon, ShieldCheckIcon } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,6 +52,37 @@ const reviewOpen = ref(false)
 const reviewUser = ref<ReviewUser | null>(null)
 const reviewMode = ref<'approve' | 'reject'>('approve')
 
+const roleTarget = ref<{ id: number; name: string; role: 'admin' | 'family_member' } | null>(null)
+const roleBusy = ref(false)
+
+function requestRole(user: User, role: 'admin' | 'family_member') {
+  roleTarget.value = { id: user.id, name: user.name, role }
+}
+
+async function confirmRole() {
+  const target = roleTarget.value
+  if (!target) return
+  roleBusy.value = true
+  try {
+    const res = await fetch(`${apiBase}/admin/users/${target.id}/role`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${authStore.token}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({ role: target.role }),
+    })
+    if (!res.ok) throw new Error('Role update failed')
+    toast.success(target.role === 'admin' ? 'Member is now an admin' : 'Admin role removed')
+    roleTarget.value = null
+    await load()
+  } catch {
+    toast.error('Could not update the role')
+  } finally {
+    roleBusy.value = false
+  }
+}
+
 function initials(name: string) {
   const parts = name.trim().split(/\s+/)
   return ((parts[0]?.[0] ?? '') + (parts[parts.length - 1]?.[0] ?? '')).toUpperCase()
@@ -72,7 +105,15 @@ async function load() {
     const res = await fetch(`${apiBase}/admin/users`, {
       headers: { Authorization: `Bearer ${authStore.token}` },
     })
-    if (res.ok) users.value = await res.json()
+    if (res.ok) {
+      const data = (await res.json()) as User[]
+      const me = authStore.user?.id
+      users.value = data.sort((a, b) => {
+        if (a.id === me) return -1
+        if (b.id === me) return 1
+        return a.name.localeCompare(b.name)
+      })
+    }
   } catch {
     toast.error('Could not load users')
   } finally {
@@ -134,11 +175,12 @@ onMounted(async () => {
           <TableRow>
             <TableHead class="text-center">Member</TableHead>
             <TableHead class="text-center">Joined / Approved</TableHead>
+            <TableHead class="text-center">Role</TableHead>
             <TableHead class="text-center">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableEmpty v-if="users.length === 0" :colspan="3">
+          <TableEmpty v-if="users.length === 0" :colspan="4">
             No members yet.
           </TableEmpty>
           <TableRow v-for="user in users" :key="user.id">
@@ -165,16 +207,39 @@ onMounted(async () => {
               </div>
             </TableCell>
             <TableCell class="text-center">
-              <div class="inline-flex justify-center gap-1">
+              <Badge variant="outline" class="capitalize">{{ user.role.replace('_', ' ') }}</Badge>
+            </TableCell>
+            <TableCell class="text-center">
+              <div class="flex flex-col items-stretch justify-center gap-1.5">
                 <Button
                   v-if="user.status !== 'approved'"
                   size="sm"
                   variant="ghost"
-                  title="Approve"
+                  class="w-full justify-center rounded-full bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25 dark:text-emerald-400"
                   @click="openReview(user, 'approve')"
                 >
                   <CheckIcon class="size-3.5" />
-                  <span class="sr-only sm:not-sr-only">Approve</span>
+                  Approve
+                </Button>
+                <Button
+                  v-if="user.role !== 'admin'"
+                  size="sm"
+                  variant="ghost"
+                  class="w-full justify-center rounded-full bg-indigo-500/15 text-indigo-700 hover:bg-indigo-500/25 dark:text-indigo-400"
+                  @click="requestRole(user, 'admin')"
+                >
+                  <ShieldCheckIcon class="size-3.5" />
+                  Make admin
+                </Button>
+                <Button
+                  v-else-if="authStore.user && authStore.user.id !== user.id"
+                  size="sm"
+                  variant="ghost"
+                  class="w-full justify-center rounded-full bg-amber-500/15 text-amber-700 hover:bg-amber-500/25 dark:text-amber-400"
+                  @click="requestRole(user, 'family_member')"
+                >
+                  <ShieldCheckIcon class="size-3.5" />
+                  Remove admin
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger as-child>
@@ -182,10 +247,10 @@ onMounted(async () => {
                       v-if="user.status === 'approved'"
                       size="sm"
                       variant="ghost"
-                      title="Suspend"
+                      class="w-full justify-center rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20"
                     >
                       <BanIcon class="size-3.5" />
-                      <span class="sr-only sm:not-sr-only">Suspend</span>
+                      Suspend
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
@@ -218,5 +283,30 @@ onMounted(async () => {
       @update:open="(v) => (reviewOpen = v)"
       @done="load"
     />
+
+    <Dialog :open="!!roleTarget" @update:open="(v) => { if (!v) roleTarget = null }">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {{ roleTarget?.role === 'admin' ? 'Make' : 'Remove' }} admin: {{ roleTarget?.name }}?
+          </DialogTitle>
+          <DialogDescription>
+            {{
+              roleTarget?.role === 'admin'
+                ? 'This member will gain access to approval and user management.'
+                : 'This member will lose admin privileges.'
+            }}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="ghost" :disabled="roleBusy" @click="roleTarget = null">
+            Cancel
+          </Button>
+          <Button :disabled="roleBusy" @click="confirmRole">
+            {{ roleBusy ? 'Saving…' : roleTarget?.role === 'admin' ? 'Make admin' : 'Remove admin' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>

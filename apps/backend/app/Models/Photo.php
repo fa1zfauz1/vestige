@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 #[Fillable(['title', 'front_image_path', 'back_image_path', 'description', 'taken_year', 'taken_date', 'location', 'latitude', 'longitude', 'uploaded_by'])]
 class Photo extends Model
@@ -24,5 +25,10 @@ class Photo extends Model
     public function uploader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'uploaded_by');
+    }
+
+    public function sharedWith(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'photo_user');
     }
 }

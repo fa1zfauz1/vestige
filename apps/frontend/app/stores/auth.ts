@@ -6,6 +6,9 @@ interface User {
   email: string
   role: string
   status: string
+  nickname?: string | null
+  birth_date?: string | null
+  avatar_url?: string | null
   rejection_reason?: string | null
   appeal_reason?: string | null
 }

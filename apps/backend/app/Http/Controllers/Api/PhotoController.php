@@ -10,9 +10,15 @@ use Illuminate\Support\Facades\Storage;
 
 class PhotoController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return Photo::with('uploader')
+        $user = $request->user();
+
+        return Photo::with(['uploader', 'sharedWith:id,name,email'])
+            ->where(function ($query) use ($user) {
+                $query->where('uploaded_by', $user->id)
+                    ->orWhereHas('sharedWith', fn ($q) => $q->where('users.id', $user->id));
+            })
             ->latest()
             ->paginate(20)
             ->through(function (Photo $photo) {
@@ -21,6 +27,9 @@ class PhotoController extends Controller
                 if ($photo->back_image_path) {
                     $photo->back_image_url = $this->signedObjectUrl($photo->back_image_path);
                 }
+
+                $photo->setAttribute('shared_with', $this->sharedPayload($photo));
+                unset($photo->sharedWith);
 
                 return $photo;
             });
@@ -63,15 +72,48 @@ class PhotoController extends Controller
         return response()->json($photo, 201);
     }
 
-    public function show(Photo $photo)
+    public function show(Request $request, Photo $photo)
     {
-        $photo->load('uploader');
+        $this->ensureAccess($request, $photo);
+
+        $photo->load(['uploader', 'sharedWith:id,name,email']);
 
         $photo->front_image_url = $this->signedObjectUrl($photo->front_image_path);
 
         if ($photo->back_image_path) {
             $photo->back_image_url = $this->signedObjectUrl($photo->back_image_path);
         }
+
+        $photo->setAttribute('shared_with', $this->sharedPayload($photo));
+        unset($photo->sharedWith);
+
+        return response()->json($photo);
+    }
+
+    public function share(Request $request, Photo $photo)
+    {
+        $this->ensureUploader($request, $photo);
+
+        $validated = $request->validate([
+            'user_ids' => 'array',
+            'user_ids.*' => 'integer|exists:users,id',
+        ]);
+
+        $userIds = collect($validated['user_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->reject(fn ($id) => $id === $photo->uploaded_by)
+            ->unique()
+            ->values();
+
+        $photo->sharedWith()->sync($userIds);
+
+        $photo->load(['uploader', 'sharedWith:id,name,email']);
+        $photo->front_image_url = $this->signedObjectUrl($photo->front_image_path);
+        if ($photo->back_image_path) {
+            $photo->back_image_url = $this->signedObjectUrl($photo->back_image_path);
+        }
+        $photo->setAttribute('shared_with', $this->sharedPayload($photo));
+        unset($photo->sharedWith);
 
         return response()->json($photo);
     }
@@ -185,6 +227,30 @@ class PhotoController extends Controller
         if ($request->user()->id !== $photo->uploaded_by) {
             abort(403, 'Only the uploader can modify this photo');
         }
+    }
+
+    private function ensureAccess(Request $request, Photo $photo)
+    {
+        $user = $request->user();
+
+        if (
+            $user->id !== $photo->uploaded_by
+            && !$photo->sharedWith()->where('users.id', $user->id)->exists()
+        ) {
+            abort(403, 'You do not have access to this photo');
+        }
+    }
+
+    private function sharedPayload(Photo $photo): array
+    {
+        return $photo->sharedWith
+            ->map(fn ($user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ])
+            ->values()
+            ->all();
     }
 
     private function signedObjectUrl(string $path, int $minutes = 5): string
