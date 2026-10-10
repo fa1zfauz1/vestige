@@ -78,7 +78,7 @@ services:
       dockerfile: docker/frontend/Dockerfile
     container_name: ${COMPOSE_PROJECT_NAME}-frontend
     environment:
-      - NUXT_PUBLIC_API_BASE=https://faizfauzi-server.tail6fd5e5.ts.net/api
+      - NUXT_PUBLIC_API_BASE=http://localhost/api
       - NUXT_HOST=0.0.0.0
       - NUXT_PORT=3000
     volumes:
@@ -125,8 +125,14 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # NOTE: MinIO's upstream community images were removed from Docker Hub
+  # (`minio/minio` now 404s) and Quay (`quay.io/minio/*` is private) in 2025.
+  # The upstream project is archived and source-only. We therefore use the
+  # community mirror maintained by Coolify, pinned to a dated release.
+  # Digest: sha256:69b55a1c1c5dc285ce04db96689f5b2102317fc77a50680a1874ca6efd1c87f9
+  # See README → "Object storage (MinIO)" for alternatives / how to bump this.
   minio:
-    image: minio/minio:latest
+    image: ghcr.io/coollabsio/minio:2025-10-15T17-29-55Z
     container_name: ${COMPOSE_PROJECT_NAME}-minio
     command: server /data --console-address ":9001"
     environment:
@@ -185,7 +191,9 @@ services:
   # ─── Phase 3+4: MinIO Bucket Setup ────────────
 
   minio-setup:
-    image: minio/mc:latest
+    # `minio/mc` was removed alongside the server image; Bitnami's frozen
+    # legacy client image ships the same `mc` binary at /opt/bitnami/minio-client/bin.
+    image: bitnamilegacy/minio-client:latest
     container_name: ${COMPOSE_PROJECT_NAME}-minio-setup
     depends_on:
       minio:

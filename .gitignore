@@ -11,12 +11,21 @@ node_modules/
 
 # Laravel
 apps/backend/.env
-apps/backend/storage/framework/cache/data/
-apps/backend/storage/framework/sessions/
-apps/backend/storage/framework/testing/
-apps/backend/storage/framework/views/
-apps/backend/storage/logs/
-apps/backend/bootstrap/cache/
+# Runtime dirs: ignore their contents but keep the .gitignore placeholder so a
+# fresh clone already has the writable directories Laravel needs (artisan and
+# `composer install` fail if bootstrap/cache or storage/framework/* are absent).
+apps/backend/storage/framework/cache/data/*
+!apps/backend/storage/framework/cache/data/.gitignore
+apps/backend/storage/framework/sessions/*
+!apps/backend/storage/framework/sessions/.gitignore
+apps/backend/storage/framework/testing/*
+!apps/backend/storage/framework/testing/.gitignore
+apps/backend/storage/framework/views/*
+!apps/backend/storage/framework/views/.gitignore
+apps/backend/storage/logs/*
+!apps/backend/storage/logs/.gitignore
+apps/backend/bootstrap/cache/*
+!apps/backend/bootstrap/cache/.gitignore
 
 # Nuxt
 apps/frontend/.nuxt/

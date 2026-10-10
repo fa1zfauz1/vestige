@@ -1,6 +1,6 @@
 ---
 name: family-archive-dev
-description: Use for any work in the Family Digital Archive ("VESTIGE") project — Nuxt 4 SPA frontend, Laravel 13 backend, Docker Compose, shadcn-vue UI. Covers the environment gotchas (Node version, container node_modules volume, root-owned build dirs, Redis "null" password), routing/layout conventions, backend auth/audit patterns, and the verify + git push workflow.
+description: Use for any work in the Family Digital Archive ("VESTIGE") project — Nuxt 4 SPA frontend, Laravel 13 backend, Docker Compose, shadcn-vue UI. Covers spin-up/first-run order, the MinIO community-image removal (compose uses community mirrors), the environment gotchas (Node version, container node_modules volume, bootstrap/cache, Redis "null" password, NUXT_PUBLIC_API_BASE), routing/layout conventions, backend auth/audit patterns, and the verify + git push workflow.
 ---
 
 # Family Digital Archive (VESTIGE) Development
@@ -32,6 +32,31 @@ recognition, OCR, timeline, family tree, advanced AI) are untouched.
   `NOAUTH Authentication required.` (rate limiter uses redis cache).
 - Backend runs `php -S` (no rebuild) — PHP edits apply per request. `config:clear` if env/config
   seems stale.
+- **MinIO upstream images are gone.** MinIO removed `minio/minio` + `minio/mc` from Docker Hub (both
+  now 404) and made `quay.io/minio/*` private; the upstream repo is **archived and source-only**.
+  `docker-compose.yml` therefore uses community mirrors: server
+  `ghcr.io/coollabsio/minio:2025-10-15T17-29-55Z`, client `bitnamilegacy/minio-client:latest`.
+  **Never revert these to `minio/minio` / `minio/mc`** — the pulls fail. See `AGENTS.md` for bump /
+  source-build / migration options.
+- **`NUXT_PUBLIC_API_BASE`** (frontend service in `docker-compose.yml`) must be
+  `http://localhost/api` for local Docker. It was once hardcoded to a Tailscale URL; a wrong value
+  makes the SPA call the wrong backend. Recreate the `frontend` container after changing it.
+- **Fresh-clone writable dirs**: `bootstrap/cache/` and `storage/framework/{sessions,views,testing}` +
+  `storage/logs/` are kept in git via `.gitignore` placeholder files (they are required by
+  `artisan`). If `composer install` fails with `bootstrap/cache directory must be present and
+  writable`, run:
+  `docker compose exec backend sh -c "mkdir -p bootstrap/cache storage/framework/{sessions,views,cache,data} storage/logs"`.
+
+## First run / spin-up order
+
+1. `cp .env.example .env` and set `GOOGLE_*` + `APP_ADMIN_EMAIL` (keep `REDIS_PASSWORD` a real value).
+2. `docker compose up -d --build` (starts nginx, backend, frontend, postgres, redis, minio).
+3. `docker compose exec backend composer install` (vendor/ is bind-mounted, not baked).
+4. `docker compose exec backend php artisan key:generate`.
+5. `docker compose run --rm --no-deps frontend npm install` (fills the `frontend-node-modules` volume).
+6. `docker compose exec backend php artisan migrate`.
+7. `docker compose run --rm minio-setup` (creates + public-reads the `photos` bucket).
+8. Verify: `curl -s -o /dev/null -w "%{http_code}" http://localhost/` → `200`.
 
 ## Auth & access model (backend)
 
@@ -59,6 +84,8 @@ recognition, OCR, timeline, family tree, advanced AI) are untouched.
 
 ## MinIO URLs
 
+- **Image publishing/mirrors are covered under "Critical environment facts" above** — do not
+  reintroduce the removed upstream images.
 - Bucket `photos` is **public-read**, so avatars use permanent public URLs (`{MINIO_PUBLIC_URL}/{bucket}/{path}`),
   appended via `User::getAvatarUrlAttribute()`. Photos keep **5-min signed URLs** signed against the
   **public** endpoint (see `PhotoController::signedObjectUrl`) — never string-replace the host of a
